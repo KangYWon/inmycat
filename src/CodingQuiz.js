@@ -65,6 +65,9 @@ const CodingQuiz = ({ onCorrectAnswer, onClose }) => {
       case 'codeReview':
         isCorrect = true; // 코드 리뷰는 항상 "정답"으로 처리
         break;
+      default:
+      setFeedback("지원하지 않는 질문 유형입니다.");
+      return;
     }
 
     if (isCorrect) {
@@ -134,6 +137,8 @@ const CodingQuiz = ({ onCorrectAnswer, onClose }) => {
             </button>
           </div>
         );
+        default:
+        return <p>지원하지 않는 질문 유형입니다.</p>; 
     }
   };
 
