@@ -63,7 +63,8 @@ const CodingQuiz = ({ onCorrectAnswer, onClose }) => {
         isCorrect = answer.toLowerCase().trim() === currentQuestion.correctAnswer.toLowerCase();
         break;
       case 'codeReview':
-        isCorrect = true; // 코드 리뷰는 항상 "정답"으로 처리
+        // 코드 리뷰는 따로 피드백만 표시해둠 (점수x)
+        setFeedback(currentQuestion.feedback);
         break;
       default:
       setFeedback("지원하지 않는 질문 유형입니다.");
@@ -77,10 +78,6 @@ const CodingQuiz = ({ onCorrectAnswer, onClose }) => {
       onCorrectAnswer(earnedMoney);
     } else {
       setFeedback("틀렸습니다. 다시 시도해보세요.");
-    }
-
-    if (currentQuestion.type === 'codeReview') {
-      setFeedback(currentQuestion.feedback);
     }
   };
 

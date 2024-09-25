@@ -6,19 +6,19 @@ const CatCodingGame = () => {
   const [money, setMoney] = useState(0);
   const [food, setFood] = useState(0);
   const [milk, setMilk] = useState(0);
-  const [happiness, setHappiness] = useState(50);
-  const [catPosition, setCatPosition] = useState({ x: 150, y: 150 });
+  const [cats, setCats] = useState([
+    { id: 'main', x: 150, y: 150, happiness: 50, size: 50, isCatChasing: false, showPaw: null }
+  ]);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isCatChasing, setIsCatChasing] = useState(false);
-  const [showPaw, setShowPaw] = useState(null);
   const [catAction, setCatAction] = useState(null);
   const [lastFedTime, setLastFedTime] = useState(Date.now());
   const [showCodingQuiz, setShowCodingQuiz] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
-  // const [isCatPlaying, setIsCatPlaying] = useState(false);
   const [isMouseDetected, setIsMouseDetected] = useState(false);
+  const [foodCount, setFoodCount] = useState(0); // 먹이 횟수
+  const [milkCount, setMilkCount] = useState(0); // 우유 횟수
+  const [canPoop, setCanPoop] = useState(false); // 배변 가능 여부
   const gameAreaRef = useRef(null);
-  const [canPoop, setCanPoop] = useState(false);
 
   const earnMoney = (amount) => {
     setMoney(prevMoney => prevMoney + amount);
@@ -39,54 +39,98 @@ const CatCodingGame = () => {
   };
 
   const feedCat = () => {
-    if (food > 0) {
+    if (food > 0 && foodCount < 3) {  // 먹이 횟수가 3 이하일 때만 가능
       setFood(prevFood => prevFood - 1);
-      setHappiness(prevHappiness => Math.min(prevHappiness + 10, 100));
+      setFoodCount(prevCount => prevCount + 1);
+      updateCatsAndGenerateKitten(10);
       setCatAction('eating');
       setLastFedTime(Date.now());
-      setCanPoop(true);
+      setCanPoop(true); // 먹이면 배변 가능 상태
       setTimeout(() => setCatAction(null), 2000);
+    } else if (foodCount >= 3) {
+      alert("배변을 해야 다시 먹을 수 있습니다!");
     }
   };
-
+  
   const giveMilk = () => {
-    if (milk > 0) {
+    if (milk > 0 && milkCount < 3) {  // 우유 횟수가 3 이하일 때만 가능
       setMilk(prevMilk => prevMilk - 1);
-      setHappiness(prevHappiness => Math.min(prevHappiness + 5, 100));
+      setMilkCount(prevCount => prevCount + 1);
+      updateCatsAndGenerateKitten(5);
       setCatAction('drinking');
       setLastFedTime(Date.now());
       setTimeout(() => setCatAction(null), 2000);
+    } else if (milkCount >= 3) {
+      alert("배변을 해야 다시 먹을 수 있습니다!");
     }
   };
-
-  // const playCat = () => {
-  //   setHappiness(prevHappiness => Math.min(prevHappiness + 15, 100));
-  //   setLastFedTime(Date.now());
-  //   // setIsCatPlaying(true);
-  //   // setTimeout(() => setIsCatPlaying(false), 5000);
-  //   setTimeout(() => 5000);
-  // };
-
-  const moveCatRandomly = useCallback(() => {
-    if (!isCatChasing && !catAction) {
-      setCatPosition(prev => ({
-        x: Math.max(0, Math.min(prev.x + (Math.random() - 0.5) * 80, 950)), 
-        y: Math.max(0, Math.min(prev.y + (Math.random() - 0.5) * 80, 950)) 
-      }));
-    }
-  }, [isCatChasing, catAction]);
 
   const catPoop = () => {
-    if (canPoop) { // Check if the cat can poop
-      setHappiness(prevHappiness => Math.max(prevHappiness + 5, 0));
+    if (canPoop && (foodCount >= 1 || milkCount >= 1)) {
+      setCats(prevCats => prevCats.map(cat => ({
+        ...cat,
+        happiness: Math.min(cat.happiness + 5, 100)
+      })));
       setCatAction('pooping');
       setLastFedTime(Date.now());
-      setCanPoop(false); // Disable pooping after using it
+      setCanPoop(false);
+      setFoodCount(0); // Reset food count after pooping
+      setMilkCount(0); // Reset milk count after pooping
       setTimeout(() => setCatAction(null), 2000);
     } else {
-      alert("고양이가 먹어야 배변할 수 있습니다!"); // Alert if trying to poop without eating
+      alert("고양이가 충분히 먹지 않았습니다! \n 밥을 먹거나 우유를 마셔야 배변할 수 있습니다.");
     }
   };
+
+  const generateKitten = () => {
+    return {
+      id: Date.now(),
+      x: 150,
+      y: 150,
+      happiness: 50,
+      size: 30,
+      isCatChasing: false,
+      showPaw: null
+    };
+  };
+
+  const updateCatsAndGenerateKitten = (increment) => {
+    setCats(prevCats => {
+      let newCats = [...prevCats];
+      let shouldGenerateKitten = false;
+
+      newCats = newCats.map(cat => {
+        let newHappiness = Math.min(cat.happiness + increment, 100);
+        let newSize = cat.size;
+  
+        if (newHappiness === 100 && cat.size < 70) {
+          newSize = 70;
+          newHappiness = 50;
+          shouldGenerateKitten = true;
+        }
+        return { ...cat, happiness: newHappiness, size: newSize };
+      });
+
+      if (shouldGenerateKitten) {
+        newCats.push(generateKitten());
+      }
+
+      return newCats;
+    });
+  };
+
+  const moveCats = useCallback(() => {
+    setCats(prevCats => prevCats.map(cat => {
+      if (!cat.isCatChasing) {
+        return {
+          ...cat,
+          x: Math.max(0, Math.min(cat.x + (Math.random() - 0.5) * 80, 950)),
+          y: Math.max(0, Math.min(cat.y + (Math.random() - 0.5) * 80, 950))
+        };
+      }
+      return cat;
+    }));
+  }, []);
   
   const handleMouseMove = useCallback((e) => {
     if (gameAreaRef.current) {
@@ -95,7 +139,6 @@ const CatCodingGame = () => {
       const y = e.clientY - rect.top;
       setMousePosition({ x, y });
       
-      // 랜덤하게 마우스 감지 여부 결정
       if (Math.random() < 0.8) { 
         setIsMouseDetected(true);
       } else {
@@ -105,7 +148,7 @@ const CatCodingGame = () => {
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(moveCatRandomly, 500);
+    const interval = setInterval(moveCats, 500);
     const currentRef = gameAreaRef.current;
   
     if (currentRef) {
@@ -118,31 +161,31 @@ const CatCodingGame = () => {
         currentRef.removeEventListener('mousemove', handleMouseMove);
       }
     };
-  }, [moveCatRandomly, handleMouseMove]);
+  }, [moveCats, handleMouseMove]);
 
   useEffect(() => {
     if (!catAction && isMouseDetected) {
-      const dx = mousePosition.x - catPosition.x;
-      const dy = mousePosition.y - catPosition.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      setCats(prevCats => prevCats.map(cat => {
+        const dx = mousePosition.x - cat.x;
+        const dy = mousePosition.y - cat.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance < 100) { 
-        setIsCatChasing(true);
-        setCatPosition(prev => ({
-          x: Math.max(0, Math.min(prev.x + dx * 0.1, 950)),
-          y: Math.max(0, Math.min(prev.y + dy * 0.1, 950))
-        }));
-
-        setShowPaw(dx < 0 ? 'left' : 'right'); 
-      } else {
-        setIsCatChasing(false);
-        setShowPaw(null);
-      }
+        if (distance < 100) { 
+          return {
+            ...cat,
+            x: Math.max(0, Math.min(cat.x + dx * 0.1, 950)),
+            y: Math.max(0, Math.min(cat.y + dy * 0.1, 950)),
+            isCatChasing: true,
+            showPaw: dx < 0 ? 'left' : 'right'
+          };
+        } else {
+          return { ...cat, isCatChasing: false, showPaw: null };
+        }
+      }));
     } else {
-      setIsCatChasing(false);
-      setShowPaw(null);
+      setCats(prevCats => prevCats.map(cat => ({ ...cat, isCatChasing: false, showPaw: null })));
     }
-  }, [mousePosition, catPosition, catAction, isMouseDetected]);
+  }, [mousePosition, catAction, isMouseDetected]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -150,12 +193,20 @@ const CatCodingGame = () => {
       const timeSinceLastFed = (currentTime - lastFedTime) / 1000;
 
       if (timeSinceLastFed > 10) {
-        setHappiness(prevHappiness => {
-          const newHappiness = Math.max(prevHappiness - 1, 0);
-          if (newHappiness === 0) {
+        setCats(prevCats => {
+          let updatedCats = prevCats.map(cat => ({
+            ...cat,
+            happiness: Math.max(cat.happiness - 1, 0)
+          }));
+          
+          // Remove cats with 0 happiness, except the main cat
+          updatedCats = updatedCats.filter(cat => cat.happiness > 0 || cat.id === 'main');
+          
+          if (updatedCats.length === 1 && updatedCats[0].happiness === 0) {
             setIsGameOver(true);
           }
-          return newHappiness;
+          
+          return updatedCats;
         });
       }
     }, 10000);
@@ -163,7 +214,7 @@ const CatCodingGame = () => {
     return () => clearInterval(interval);
   }, [lastFedTime]);
 
-  const renderPaw = () => {
+  const renderPaw = (showPaw) => {
     if (!showPaw) return null;
 
     const pawStyle = {
@@ -192,9 +243,10 @@ const CatCodingGame = () => {
     );
   };
 
-  const renderHappinessBar = () => {
+  const renderHappinessBar = (happiness, label) => {
     return (
       <div className="flex items-center mb-4">
+        <span className="mr-2">{label}</span>
         <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
           <div 
             className="bg-blue-600 h-2.5 rounded-full" 
@@ -206,14 +258,16 @@ const CatCodingGame = () => {
     );
   };
 
-  const getCatColor = () => {
-    if (isCatChasing) return "rgb(209,138,155)"; 
+  const getCatColor = (isCatChasing, happiness) => {
+    if (isCatChasing) {
+      // 랜덤 RGB 색상 생성
+      const r = Math.floor(Math.random() * 256);
+      const g = Math.floor(Math.random() * 256);
+      const b = Math.floor(Math.random() * 256);
+      return `rgb(${r},${g},${b})`;
+    }
     if (happiness > 50) return "black";
     return "gray";
-  };
-
-  const getCatSize = () => {
-    return happiness === 100 ? 70 : 50;
   };
 
   if (isGameOver) {
@@ -221,7 +275,7 @@ const CatCodingGame = () => {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="p-4 max-w-md mx-auto bg-white shadow-lg rounded-lg text-center">
           <h1 className="text-3xl font-bold mb-4">게임 오버</h1>
-          <p className="mb-4">고양이의 행복도가 0%가 되어 사라졌습니다.</p>
+          <p className="mb-4">모든 고양이의 행복도가 0%가 되어 사라졌습니다.</p>
           <button 
             onClick={() => window.location.reload()} 
             className="bg-blue-500 text-white p-3 rounded-lg shadow-lg hover:bg-blue-600"
@@ -250,14 +304,16 @@ const CatCodingGame = () => {
         ) : (
           <>
             <h1 className="text-3xl font-bold mb-4 text-center">고양이 코딩 게임</h1>
-            <div className="mb-4" style={{position: 'absolute', left: `${catPosition.x}px`, top: `${catPosition.y}px`, transition: 'all 0.5s'}}>
-              <Cat size={getCatSize()} color={getCatColor()} />
-              {renderPaw()}
-              {renderCatAction()}
-            </div>
+            {cats.map(cat => (
+              <div key={cat.id} className="mb-4" style={{position: 'absolute', left: `${cat.x}px`, top: `${cat.y}px`, transition: 'all 0.5s'}}>
+                <Cat size={cat.size} color={getCatColor(cat.isCatChasing, cat.happiness)} />
+                {renderPaw(cat.showPaw)}
+                {renderCatAction(cat.id === 'main' ? catAction : null)}
+              </div>
+            ))}
             <div className="mb-4 text-center">
-              <p className="mb-1">행복도:</p>
-              {renderHappinessBar()}
+              <p className="mb-1">고양이 행복도</p>
+              {renderHappinessBar(cats.length > 0 ? cats[cats.length - 1].happiness : 0)}
               <p className="flex items-center justify-center mb-1">
                 <span className="mr-2">돈:</span>
                 <span className="font-bold">${money}</span>
@@ -271,6 +327,10 @@ const CatCodingGame = () => {
                 <span className="mr-2">우유:</span>
                 <span className="font-bold">{milk}</span>
                 <Milk size={16} className="ml-2" />
+              </p>
+              <p className="flex items-center justify-center mt-2">
+                <span className="mr-2">고양이 수:</span>
+                <span className="font-bold">{cats.length}</span>
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4 mt-4">
